@@ -23,7 +23,7 @@ export default class AppDB {
      * @returns {void}
      */
     private setupConfig(): void {
-        AppDB.dburl = ConfigUtil.mongoConfig.dbUrl;
+        AppDB.dburl = ConfigUtil.mongoConfig.dbUrl!;
         AppDB.dbOptions.useNewUrlParser = true;
         AppDB.dbOptions.useUnifiedTopology = true;
     }
