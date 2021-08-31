@@ -16,6 +16,11 @@
                 productModal = new bootstrap.Modal(document.getElementById('productModal'), {
                     keyboard: false
                 });
+                document.getElementById('productModal').addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('removeProduct').style.display = 'none';
+                    document.getElementById('removeProduct').removeAttribute('onclick');
+                });
+
                 productList = <%-JSON.stringify(locals.data) %>
                 tabledata = [];
                 if (productList.length > 0) {
@@ -80,7 +85,7 @@
                             document.getElementById('priceOfGroup').value = '';
                         }
                         document.getElementById('removeProduct').style.display = 'block';
-                        document.getElementById('removeProduct').setAttribute('onclick', `deleteProduct(${row.getData().id})`)
+                        document.getElementById('removeProduct').setAttribute('onclick', `deleteProduct(${row.getData().id})`);
                         productModal.show();
                     }
                 });
