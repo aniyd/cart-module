@@ -46,7 +46,7 @@ class Server {
             {
                 resave: false,
                 saveUninitialized: true,
-                secret: ConfigUtil.sessionSecret
+                secret: ConfigUtil.sessionSecret!
             }
         ));
         this.app.use(compression());
@@ -67,7 +67,7 @@ class Server {
      * @returns {void}
      */
     private start(): void {
-        this.app.listen(process.env.PORT || this.app.get('port'), () => {
+        this.app.listen(this.app.get('port'), () => {
             Logger.info(`${ConfigUtil.appName} APP API is running at port ` +
                     `${this.app.get('port')}.`);
         });
