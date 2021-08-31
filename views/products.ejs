@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link href="https://unpkg.com/tabulator-tables@4.9.3/dist/css/tabulator.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+        <script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.9.3/dist/js/tabulator.min.js"></script>
+        <script type="text/javascript">
+            var table, productList, tabledata, productModal;
+            let int = setInterval(() => {
+                if (document.getElementById('product-table')) {
+                    clearInterval(int);
+                }
+                productModal = new bootstrap.Modal(document.getElementById('productModal'), {
+                    keyboard: false
+                });
+                productList = <%-JSON.stringify(locals.data) %>
+                tabledata = [];
+                if (productList.length > 0) {
+                    productList.forEach((product, index) => {
+                        tabledata.push(
+                            {
+                                id: index,
+                                name: product.name,
+                                discount: product.discount.applicable === false ? `No discount applicable` :
+                                        product.discount.approach === 'COUNT-BASED' ?
+                                        `You will get ${product.discount.count_based.noOfItemsInGrp} items at ` +
+                                        `discounted price of Rs. ${product.discount.count_based.price}` :
+                                        `You will get ${product.discount.percentage_based.discount_percentage} ` +
+                                        `% discount on each item.`,
+                                price: product.price
+                            }
+                        )
+                    });
+                }
+
+                //create Tabulator on DOM element with id "example-table"
+                table = new Tabulator("#product-table", {
+                    //height:205, // set height of table (in CSS or here), this enables the Virtual DOM and improves render speed dramatically (can be any valid css height value)
+                    data:tabledata, //assign data to table
+                    layout:"fitColumns",      //fit columns to width of table
+                    responsiveLayout:"hide",  //hide columns that dont fit on the table
+                    tooltips:true,            //show tool tips on cells
+                    addRowPos:"top",          //when adding a new row, add it to the top of the table
+                    history:true,             //allow undo and redo actions on the table
+                    pagination:"local",       //paginate the data
+                    paginationSize: 7,         //allow 7 rows per page of data
+                    movableColumns:true,      //allow column order to be changed
+                    resizableRows:true,       //allow row order to be changed
+                    initialSort:[             //set the initial sort order of the data
+                        { column:"name", dir:"asc" },
+                    ],
+                    columns:[ //Define Table Columns
+                        { title:"Name", field:"name" },
+                        {title:"Discount", field:"discount", hozAlign:"left" },
+                        {title:"Price", field:"price" }
+                    ],
+                    rowClick: (e, row) => {
+                        let selectedProduct = productList[row.getData().id];
+                        document.getElementById('productName').value = selectedProduct.name;
+                        document.getElementById('productPrice').value = selectedProduct.price;
+                        document.getElementById('discountOption').value =
+                                selectedProduct.discount.applicable === false ? 'NO-DISCOUNT' :
+                                selectedProduct.discount.approach;
+                        if (document.getElementById('discountOption').value === 'COUNT-BASED') {
+                            document.getElementById('numberOfItemsInGrp').value =
+                                    selectedProduct.discount.count_based.noOfItemsInGrp;
+                            document.getElementById('priceOfGroup').value =
+                                    selectedProduct.discount.count_based.price;
+                        } else if (document.getElementById('discountOption').value === 'PERCENTAGE-BASED') {
+                            document.getElementById('discountPercentage').value =
+                                    selectedProduct.discount.percentage_based.discount_percentage;
+                            document.getElementById('numberOfItemsInGrp').value = '';
+                            document.getElementById('priceOfGroup').value = '';
+                        } else {
+                            document.getElementById('discountPercentage').value = '';
+                            document.getElementById('numberOfItemsInGrp').value = '';
+                            document.getElementById('priceOfGroup').value = '';
+                        }
+                        document.getElementById('removeProduct').style.display = 'block';
+                        document.getElementById('removeProduct').setAttribute('onclick', `deleteProduct(${row.getData().id})`)
+                        productModal.show();
+                    }
+                });
+                table.setFilter('name');
+            }, 50);
+
+            async function updateProduct() {
+                let data = {
+                    discount: {
+                        applicable: false
+                    }
+                };
+                if (document.getElementById('productName').value.length > 0) {
+                    data.name = document.getElementById('productName').value;
+                } else {
+                    alert('Product name must be provided');
+                    return;
+                }
+
+                if (document.getElementById('productPrice').value > 0) {
+                    data.price = document.getElementById('productPrice').value;
+                } else {
+                    alert('Product price must be greater than 0.');
+                    return;
+                }
+
+                if (document.getElementById('discountOption').value === 'NO-DISCOUNT') {
+                    data.discount.applicable = false;
+                } else if (document.getElementById('discountOption').value === 'COUNT-BASED') {
+                    data.discount.applicable = true;
+                    data.discount.approach = 'COUNT-BASED';
+                    if (document.getElementById('numberOfItemsInGrp').value > 0) {
+                        data.discount.count_based = {
+                            noOfItemsInGrp: document.getElementById('numberOfItemsInGrp').value
+                        };
+                    } else {
+                        alert('Number of items in group for count based discount must be greater than 0.');
+                        return;
+                    }
+
+                    if (document.getElementById('priceOfGroup').value > 0) {
+                        data.discount.count_based.price = document.getElementById('priceOfGroup').value;
+                    } else {
+                        alert('Group price must be greater than 0.');
+                        return;
+                    }
+                } else if (document.getElementById('discountOption').value === 'PERCENTAGE-BASED') {
+                    data.discount.applicable = true;
+                    data.discount.approach = 'PERCENTAGE-BASED';
+                    if (document.getElementById('discountPercentage').value > 0) {
+                        data.discount.percentage_based = {
+                            discount_percentage: document.getElementById('discountPercentage').value
+                        };
+                    } else {
+                        alert('discount percentage must be greater than 0.');
+                        return;
+                    }
+                }
+                
+
+                const response = await fetch(
+                    `${location.origin}/products`,
+                    {
+                        method: 'PUT', // *GET, POST, PUT, DELETE, etc.
+                        mode: 'cors', // no-cors, *cors, same-origin
+                        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+                        credentials: 'same-origin', // include, *same-origin, omit
+                        headers: {
+                            'Content-Type': 'application/json'
+                            // 'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        redirect: 'follow', // manual, *follow, error
+                        referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+                        body: JSON.stringify({ data: data }) // body data type must match "Content-Type" header
+                    }
+                );
+                productList = await response.json();
+                tabledata = [];
+                if (productList.length > 0) {
+                    productList.forEach((product, index) => {
+                        tabledata.push(
+                            {
+                                id: index,
+                                name: product.name,
+                                discount: product.discount.applicable === false ? `No discount applicable` :
+                                        product.discount.approach === 'COUNT-BASED' ?
+                                        `You will get ${product.discount.count_based.noOfItemsInGrp} items at ` +
+                                        `discounted price of Rs. ${product.discount.count_based.price}` :
+                                        `You will get ${product.discount.percentage_based.discount_percentage} ` +
+                                        `% discount on each item.`,
+                                price: product.price
+                            }
+                        );
+                    });
+                    table.replaceData(tabledata);
+                    productModal.hide();
+                } else {
+                    productModal.hide();
+                }
+            }
+
+            async function deleteProduct(id) {
+                const response = await fetch(
+                    `${location.origin}/products/${productList[id].name}`,
+                    {
+                        method: 'DELETE', // *GET, POST, PUT, DELETE, etc.
+                        mode: 'cors', // no-cors, *cors, same-origin
+                        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+                        credentials: 'same-origin', // include, *same-origin, omit
+                        headers: {
+                            'Content-Type': 'application/json'
+                            // 'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        redirect: 'follow', // manual, *follow, error
+                        referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+                    }
+                );
+
+                if (response.status === 200) {
+                    alert(`Product removed successfully.`);
+                    location.reload();
+                } else {
+                    alert(`Error in removing the product.`);
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <button type="button" class="btn btn-success mt-3 mb-3" data-bs-toggle="modal" data-bs-target="#productModal">
+            Add Product
+        </button>
+          
+        <!-- Modal -->
+        <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="productModalLabel">Product</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="productName" class="form-label">Product Name:</label>
+                            <input type="text" class="form-control" id="productName" placeholder="Product Name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="productPrice" class="form-label">Price:</label>
+                            <input type="number" class="form-control" id="productPrice" placeholder="Product Price" min="0">
+                        </div>
+                        <div class="mb-3">
+                            <select id="discountOption" class="form-select" aria-label="Default select example">
+                                <option valud="NO-DISCOUNT" selected>NO DISCOUNT</option>
+                                <option value="COUNT-BASED">COUNT BASED</option>
+                                <option value="PERCENTAGE-BASED">PERCENTAGE BASED</option>
+                            </select>
+                        </div>
+                        <div id="percentageBasedDiscount" class="mb-3">
+                            <label for="discountPercentage" class="form-label">Discount Percentage:</label>
+                            <input type="number" class="form-control" id="discountPercentage" placeholder="Discount Percentage" min="0">
+                        </div>
+                        <div id="countBasedDiscount" class="mb-3">
+                            <label for="numberOfItemsInGrp" class="form-label">Number of items in grp:</label>
+                            <input type="number" class="form-control" id="numberOfItemsInGrp" placeholder="Number of items in group" min="0">
+                            <label for="priceOfGroup" class="form-label">Price of grp:</label>
+                            <input type="number" class="form-control" id="priceOfGroup" placeholder="Price of group" min="0">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="removeProduct" type="button" class="btn btn-danger" style="display: none;" data-bs-dismiss="modal">Remove</button>
+                        <button id="addProduct" type="button" class="btn btn-primary" onclick="updateProduct()">Add New</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+          
+        <div id="product-table"></div>
+    </body>
+</html>
