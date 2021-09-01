@@ -58,9 +58,9 @@
                         { column:"name", dir:"asc" },
                     ],
                     columns:[ //Define Table Columns
-                        { title:"Name", field:"name" },
-                        {title:"Discount", field:"discount", hozAlign:"left" },
-                        {title:"Price", field:"price" }
+                        { title: "Name", field: "name" },
+                        { title: "Discount", field: "discount", hozAlign:"left" },
+                        { title: "Price", field: "price" }
                     ],
                     rowClick: (e, row) => {
                         let selectedProduct = productList[row.getData().id];
@@ -237,7 +237,7 @@
                         </div>
                         <div class="mb-3">
                             <select id="discountOption" class="form-select" aria-label="Default select example">
-                                <option valud="NO-DISCOUNT" selected>NO DISCOUNT</option>
+                                <option value="NO-DISCOUNT" selected>NO DISCOUNT</option>
                                 <option value="COUNT-BASED">COUNT BASED</option>
                                 <option value="PERCENTAGE-BASED">PERCENTAGE BASED</option>
                             </select>
@@ -262,5 +262,6 @@
         </div>
           
         <div id="product-table"></div>
+        <p>NOTE: To update and remove the product, click on the row.</p>
     </body>
 </html>

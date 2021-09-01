@@ -3,11 +3,10 @@
  */
 import { Schema, model } from 'mongoose';
 
-const cartListSchema: Schema = new Schema({
+const CartListSchema: Schema = new Schema({
     product_name: {
         type: String,
-        required: true,
-        unique: true
+        required: true
     },
     count: {
         type: String,
@@ -21,12 +20,8 @@ const CartsSchema: Schema = new Schema({
         required: true
     },
     cart_list: {
-        type: [cartListSchema],
+        type: [CartListSchema],
         default: []
-    },
-    cart_value: {
-        type: Number,
-        default: 0
     },
     modifiedAt: {
         type: Date,

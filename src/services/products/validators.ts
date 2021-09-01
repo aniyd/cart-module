@@ -44,6 +44,11 @@ export default class ProductsValidator extends Validators {
         return ProductsValidator.validateData(updateProductSchema, data);
     }
 
+    /**
+     * method to validate the data for removing the product.
+     * @param {ProductsTypes.DeleteProduct} data
+     * @returns {ProductsTypes.DeleteProduct}
+     */
     public static validateDeleteProduct(data: ProductsTypes.DeleteProduct):
             ProductsTypes.DeleteProduct {
         const deleteProductSchema: Joi.ObjectSchema = Joi.object(
