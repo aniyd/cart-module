@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link href="https://unpkg.com/tabulator-tables@4.9.3/dist/css/tabulator.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+        <script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.9.3/dist/js/tabulator.min.js"></script>
+        <script type="text/javascript">
+            var table, productList, tabledata, productModal, total_cart_value = 0;
+            let int = setInterval(() => {
+                if (document.getElementById('cart-table')) {
+                    clearInterval(int);
+                }
+                productModal = new bootstrap.Modal(document.getElementById('productModal'), {
+                    keyboard: false
+                });
+
+                productList = <%-JSON.stringify(locals.data) %>
+                productList = Object.values(productList);
+                productList.forEach((product, index) => {
+                    product.id = index;
+                    if (product.count > 0) {
+                        if (product.discount.applicable) {
+                            if (product.discount.approach === 'COUNT-BASED') {
+                                product.cost = ((product.count % product.discount.count_based.noOfItemsInGrp) * product.price) +
+                                        (Math.floor((product.count / product.discount.count_based.noOfItemsInGrp)) * product.discount.count_based.price);
+                                product.discount = `GROUP BASED discount applied for ` +
+                                        `${Math.floor((product.count / product.discount.count_based.noOfItemsInGrp))} ` +
+                                        `group(s)`;
+                            } else if (product.discount.approach === 'PERCENTAGE-BASED') {
+                                product.cost = product.count * (product.price * ((100 - product.discount.percentage_based.discount_percentage) /100));
+                                product.discount = `PERCENTAGE BASED discount applied.`;
+                            }
+                        } else {
+                            product.cost = product.count * product.price; 
+                            product.discount = `No DISCOUNT AVAILABLE.`;
+                        }
+                    } else {
+                        product.cost = 0;
+                        if (product.discount.applicable) {
+                            if (product.discount.approach === 'COUNT-BASED') {
+                                product.discount = `GROUP BASED discount available. Group of ` +
+                                        `${product.discount.count_based.noOfItemsInGrp} at Rs. ` +
+                                        `${product.discount.price}.`;
+                            } else if (product.discount.approach === 'PERCENTAGE-BASED') {
+                                product.discount = `PERCENTAGE BASED discount available. ` +
+                                        `${product.discount.percentage_based.discount_percentage}% off on each item.`;
+                            }
+                        } else {
+                            product.cost = product.count * product.price; 
+                            product.discount = `No DISCOUNT AVAILABLE.`;
+                        }
+                    }
+                    total_cart_value += product.cost;
+                });
+                //create Tabulator on DOM element with id "example-table"
+                table = new Tabulator("#cart-table", {
+                    //height:205, // set height of table (in CSS or here), this enables the Virtual DOM and improves render speed dramatically (can be any valid css height value)
+                    data:productList, //assign data to table
+                    layout:"fitColumns",      //fit columns to width of table
+                    responsiveLayout:"hide",  //hide columns that dont fit on the table
+                    tooltips:true,            //show tool tips on cells
+                    addRowPos:"top",          //when adding a new row, add it to the top of the table
+                    history:true,             //allow undo and redo actions on the table
+                    pagination:"local",       //paginate the data
+                    paginationSize: 7,         //allow 7 rows per page of data
+                    movableColumns:true,      //allow column order to be changed
+                    resizableRows:true,       //allow row order to be changed
+                    initialSort:[             //set the initial sort order of the data
+                        { column:"name", dir:"asc" },
+                    ],
+                    columns:[ //Define Table Columns
+                        { title: "Name", field: "name" },
+                        { title: "No.of items", field: "count", hozAlign: "left" },
+                        { title: "Discount", field: "discount" },
+                        { title: "Per item price", field: "price" },
+                        { title: "Total cost", field: "cost" }
+                    ],
+                    rowClick: (e, row) => {
+                        let selectedProduct = productList[row.getData().id];
+                        document.getElementById('productName').value = selectedProduct.name;
+                        document.getElementById('noOfItems').value = selectedProduct.count;
+                        document.getElementById('updatecart').setAttribute('onclick', `updatecart(${row.getData().id})`);
+                        productModal.show();
+                    }
+                });
+                table.setFilter('name');
+                document.getElementById('cartVaule').innerHTML = `<span class="badge bg-success">TOTAL CART VALUE = ${total_cart_value}</span>`;
+            }, 50);
+
+            async function updatecart(id) {
+                productList[id].count = document.getElementById('noOfItems').value;
+                let cart_list = [];
+                productList.forEach((product) => {
+                    cart_list.push(
+                        {
+                            product_name: product.name,
+                            count: product.count
+                        }
+                    );
+                });
+                console.log(cart_list);
+                const response = await fetch(
+                    `${location.origin}/carts`,
+                    {
+                        method: 'PUT', // *GET, POST, PUT, DELETE, etc.
+                        mode: 'cors', // no-cors, *cors, same-origin
+                        cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+                        credentials: 'same-origin', // include, *same-origin, omit
+                        headers: {
+                            'Content-Type': 'application/json'
+                            // 'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        redirect: 'follow', // manual, *follow, error
+                        referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+                        body: JSON.stringify({ cart_list: cart_list }) // body data type must match "Content-Type" header
+                    }
+                );
+                productList = await response.json();
+                productList = Object.values(productList);
+                total_cart_value = 0;
+                productList.forEach((product, index) => {
+                    product.id = index;
+                    if (product.count > 0) {
+                        if (product.discount.applicable) {
+                            if (product.discount.approach === 'COUNT-BASED') {
+                                product.cost = ((product.count % product.discount.count_based.noOfItemsInGrp) * product.price) +
+                                        (Math.floor((product.count / product.discount.count_based.noOfItemsInGrp)) * product.discount.count_based.price);
+                                product.discount = `GROUP BASED discount applied for ` +
+                                        `${Math.floor((product.count / product.discount.count_based.noOfItemsInGrp))} ` +
+                                        `group(s)`;
+                            } else if (product.discount.approach === 'PERCENTAGE-BASED') {
+                                product.cost = product.count * (product.price * ((100 - product.discount.percentage_based.discount_percentage) /100));
+                                product.discount = `PERCENTAGE BASED discount applied.`;
+                            }
+                        } else {
+                            product.cost = product.count * product.price; 
+                            product.discount = `No DISCOUNT AVAILABLE.`;
+                        }
+                    } else {
+                        product.cost = 0;
+                        if (product.discount.applicable) {
+                            if (product.discount.approach === 'COUNT-BASED') {
+                                product.discount = `GROUP BASED discount available. Group of ` +
+                                        `${product.discount.count_based.noOfItemsInGrp} at Rs. ` +
+                                        `${product.discount.price}.`;
+                            } else if (product.discount.approach === 'PERCENTAGE-BASED') {
+                                product.discount = `PERCENTAGE BASED discount available. ` +
+                                        `${product.discount.percentage_based.discount_percentage}% off on each item.`;
+                            }
+                        } else {
+                            product.cost = product.count * product.price; 
+                            product.discount = `No DISCOUNT AVAILABLE.`;
+                        }
+                    }
+                    total_cart_value += product.cost;
+                });
+                table.replaceData(productList);
+                document.getElementById('cartVaule').innerHTML = `<span class="badge bg-success">TOTAL CART VALUE = ${total_cart_value}</span>`;
+                productModal.hide();
+            }
+        </script>
+    </head>
+    <body>
+
+        <!-- Modal -->
+        <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="productModalLabel">Product</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="productName" class="form-label">Product Name:</label>
+                            <input type="text" class="form-control" id="productName" placeholder="Product Name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="noOfItems" class="form-label">No. Of items:</label>
+                            <input type="number" class="form-control" id="noOfItems" placeholder="Enter no. of item to buy" min="0">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="updatecart" type="button" class="btn btn-primary">Update cart</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="cart-table" class="mt-3"></div>
+        <div class="mr-3" tyle="float: right;">
+            <h3 id="cartVaule"></h3>
+        </div>
+        <p>NOTE: To buy new item, click on the product's row.</p>
+    </body>
+</html>
